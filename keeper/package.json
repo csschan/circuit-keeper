@@ -1,0 +1,17 @@
+{
+  "name": "circuit-keeper-bot",
+  "version": "1.0.0",
+  "description": "Circuit Keeper automation bot for X Layer",
+  "main": "keeper.js",
+  "scripts": {
+    "start": "node keeper.js",
+    "dev": "LOG_LEVEL=debug node keeper.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^18.0.10",
+    "ethers": "^6.17.0"
+  }
+}
