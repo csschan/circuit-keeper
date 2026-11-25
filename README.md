@@ -1,70 +1,138 @@
 # Circuit Keeper
 
-**On-chain automation powered by TapeOut circuits on X Layer.**
+**TapeOut-powered on-chain automation for X Layer**
 
-Circuit Keeper automates DeFi actions using TapeOut's immutable NAND-gate circuits as trigger conditions. When conditions are met, decentralized keepers execute your actions and earn fees.
+**Live Demo:** [frontend-ruby-chi-34.vercel.app](https://frontend-ruby-chi-34.vercel.app)  
+**GitHub:** [github.com/csschan/circuit-keeper](https://github.com/csschan/circuit-keeper)
 
-**Live:** [frontend-ruby-chi-34.vercel.app](https://frontend-ruby-chi-34.vercel.app)
+---
 
-## Problem
+## What Problem Does Circuit Keeper Solve?
 
-DeFi operations on-chain have no "auto" button:
-- Lending positions need manual collateral top-ups before liquidation
-- Vault yields don't auto-compound — you lose APY every hour you don't harvest
-- DAO proposals sit idle after timelock expires until someone calls execute()
+**DeFi users lose money because on-chain operations can't auto-execute.**
 
-These all require someone to send a transaction at the right time. People sleep, forget, miss windows.
+In centralized exchanges, you can set stop-loss and take-profit with one click. But on-chain DeFi has no such capability:
 
-## Solution
+| Scenario | What happens without automation |
+|---|---|
+| **Lending position at risk** | OKB drops 20% overnight, your Aave collateral gets liquidated because no one called `repay()` in time |
+| **Vault yield sitting idle** | Yield accumulates but doesn't auto-compound. Every hour without `harvest()`, you lose APY |
+| **DAO proposal stuck** | Governance vote passed, timelock expired, but the proposal sits there because no one called `execute()` |
+| **TapeOut circuit management** | Transistors need to be assembled into circuits, but no one monitors the right timing to call `tapeout()` |
 
-Circuit Keeper = **Trigger Conditions (TapeOut circuits)** + **Keeper Network (anyone can run)** + **Automated Execution**
+**The core issue:** Every on-chain action requires someone to manually send a transaction at the right time. People sleep, forget, travel, or simply miss the window. There's no native "if-this-then-that" on the blockchain.
+
+**Existing solutions like Gelato/Chainlink Automation** use off-chain computation or centralized node networks. Their trigger conditions are mutable code that operators can change at any time.
+
+---
+
+## How Circuit Keeper Solves It
+
+Circuit Keeper is a **decentralized automation service** where:
+
+1. **Users define "when to trigger"** using TapeOut's on-chain NAND-gate circuits — the trigger logic is **immutable**, deployed once and can never be changed, not even by the creator
+2. **Users define "what to execute"** — any smart contract function call
+3. **Keepers monitor and execute** — anyone can run a keeper bot (even in the browser), earn 80% of execution fees
+4. **Protocol earns 20%** — sustainable revenue from every execution
+
+### What Makes It Different from Gelato/Chainlink?
+
+| | Gelato / Chainlink Keepers | Circuit Keeper |
+|---|---|---|
+| **Trigger logic** | Mutable Solidity code or off-chain scripts | TapeOut NAND circuits — **immutable once deployed** |
+| **Trust model** | Trust the operator not to change conditions | **Zero trust** — circuit logic is on-chain, verifiable by anyone |
+| **Composability** | Conditions are independent | Circuits can nest: one circuit's output feeds another's input |
+| **Keeper access** | Requires registration or staking | **Permissionless** — connect wallet and start earning |
+| **Ecosystem** | General purpose | Built for **TapeOut + X Layer** ecosystem |
+
+---
+
+## How It Works
 
 ```
-OKX API → real-time prices
-    ↓ PriceRelay pushes to chain
-InputResolver → resolves conditions to bits
-    ↓ bit-packed input bytes
-TapeOut eval(circuitId, bits) → TRUE / FALSE
-    ↓ if output pin = 1
-Keeper → executeJob() → target.call()
-    ↓ fee split: 80% keeper, 20% protocol
+Step 1: User creates a Job
+   "When OKB price > $80, call harvest() on my vault"
+   
+Step 2: Conditions are resolved on-chain
+   OKX API → PriceRelay contract → InputResolver → bit-packed inputs
+   
+Step 3: TapeOut circuit verifies
+   XBOT Processor.eval(circuitId=1, inputBits) → TRUE or FALSE
+   The NAND-2 circuit acts as a NOT gate: NOT(price_below_$80) = price_above_$80
+   
+Step 4: Keeper executes
+   Any keeper sees checkUpkeep() = true → calls executeJob()
+   → target contract function is called
+   → Keeper earns 80% fee, protocol earns 20%
 ```
 
-## Key Features
+---
 
-- **TapeOut Integration** — Trigger rules are real NAND-gate circuits (XBOT Processor, Circuit ID 1). Immutable, on-chain verifiable, never changeable.
-- **Real-time Price Feeds** — OKB/ETH/BTC prices from OKX API via PriceRelay contract.
-- **Browser Keeper** — Run a keeper directly in your browser. Connect wallet, click Start, earn fees.
-- **7 Input Types** — Price above/below, token balance, time-based, static calls, circuit output (composable).
-- **Template System** — Pre-built job templates: Profit Taker, Stop-Loss, Yield Harvester, Rebalancer.
+## Target Users
 
-## Architecture
+### DeFi Users (Job Creators)
+- Want automated stop-loss, take-profit, yield harvesting, collateral management
+- Pay a small fee per execution (e.g., 0.001 OKB) in exchange for 24/7 automation
+- **Why they pay:** Automation prevents losses (liquidation) and maximizes gains (compound yield). The fee is negligible compared to the value protected.
 
-```
-┌─────────────────────────────────────────────────┐
-│                   Frontend                       │
-│  Create Job │ Job Detail │ Explore │ Keeper      │
-└──────────────────────┬──────────────────────────┘
-                       │
-┌──────────────────────┴──────────────────────────┐
-│                 JobRegistry                      │
-│  registerJob │ checkUpkeep │ executeJob          │
-│                                                  │
-│  ┌──────────────┐    ┌────────────────────┐     │
-│  │ InputResolver │───→│ TapeOut Processor  │     │
-│  │ (7 adapters)  │    │ eval(circuitId,    │     │
-│  └──────────────┘    │      inputBits)    │     │
-│                      └────────────────────┘     │
-└──────────────────────┬──────────────────────────┘
-                       │
-┌──────────────────────┴──────────────────────────┐
-│              Keeper Bot / Browser                 │
-│  Scan jobs → checkUpkeep → executeJob            │
-│  Earn 80% of feePerRun per execution             │
-└─────────────────────────────────────────────────┘
-```
+### Keepers (Execution Network)
+- Anyone with a wallet can run a keeper — in the browser or via CLI
+- Earn 80% of feePerRun for every job they execute
+- Competitive model: first to submit the transaction gets the fee
+- **Why they participate:** Passive income with minimal setup. No staking required.
 
-## Contracts (X Layer Mainnet, Chain ID 196)
+### TapeOut Ecosystem
+- Circuit Keeper brings utility to TapeOut circuits beyond collectibles
+- Every job execution is a real use of `eval()` — demonstrating circuits as functional infrastructure
+- Templates for auto-tapeout, transistor DCA, circuit monitoring
+
+---
+
+## Revenue Model
+
+| Revenue Stream | Description |
+|---|---|
+| **Protocol fee (20%)** | Every job execution, 20% of feePerRun goes to protocol. Accumulated on-chain, withdrawable by owner. |
+| **Example** | 1000 jobs × 10 executions/day × 0.001 OKB fee = 2 OKB/day protocol revenue (~$160/day at $80/OKB) |
+| **Scaling** | More jobs → more keeper incentive → faster execution → more users → flywheel |
+
+---
+
+## TapeOut Integration
+
+Circuit Keeper uses TapeOut as the **trigger verification layer**:
+
+- **Processor:** XBOT (`0xa5fc69Ca2D3d462CCa204D894D85ac8071c4F0f0`) — real community-deployed processor on X Layer mainnet (1 of 444+ processors)
+- **Circuit ID 1:** NAND-2 gate (2 inputs, 1 output, 3 gates)
+- **Usage:** `NAND(A, A) = NOT(A)` — the most fundamental logic gate used as an inverter
+  - **Profit Taker:** `NOT(PRICE_BELOW $80)` = triggers when OKB > $80
+  - **Stop-Loss:** `NOT(PRICE_ABOVE $75)` = triggers when OKB < $75
+- **Why TapeOut matters:** The trigger condition is a physical-like circuit on-chain. Once taped out, it cannot be modified. Users can trust that their automation rules won't be tampered with — ever.
+- **eval()** is a `view` function — free, gas-less, and callable by anyone for verification
+
+---
+
+## Product Features
+
+### For Job Creators
+- **Template system** — Pre-built templates: Profit Taker, Stop-Loss, Yield Harvester, Portfolio Rebalancer
+- **Custom jobs** — Manual configuration with 7 input types: price above/below, token balance, time-based, static calls, circuit output
+- **Job management** — Pause, resume, cancel (refund budget), top-up budget
+- **Real-time monitoring** — Live price display, countdown timer, execution history with on-chain results
+
+### For Keepers
+- **Browser Keeper** — One-click start, runs in your browser tab, no installation needed
+- **CLI Keeper** — `node keeper.js` for 24/7 server deployment
+- **Live dashboard** — Scan status per job, execution count, fee earnings
+
+### Infrastructure
+- **PriceRelay** — Real-time OKB/ETH/BTC prices from OKX API, pushed on-chain every 30 seconds
+- **InputResolver** — 7 adapter types for flexible trigger conditions
+- **35/35 tests passing** — Full Foundry test suite
+
+---
+
+## Deployed Contracts (X Layer Mainnet)
 
 | Contract | Address |
 |---|---|
@@ -75,64 +143,37 @@ Keeper → executeJob() → target.call()
 | TapeOut XBOT Processor | `0xa5fc69Ca2D3d462CCa204D894D85ac8071c4F0f0` |
 | TapeOut Factory | `0x1f09DAeFA827f02CBb40967cc91b259763760761` |
 
-## TapeOut Usage
-
-Circuit Keeper uses TapeOut's on-chain circuits as the trigger verification layer:
-
-- **Processor:** XBOT (`0xa5fc69Ca...`) — a community-deployed TapeOut processor on X Layer mainnet
-- **Circuit ID 1:** NAND-2 gate (nIn=2, nOut=1, gateCount=3)
-- **Logic:** `NAND(A, A) = NOT(A)` — used as NOT gate to invert price conditions
-  - Profit Taker: `NOT(PRICE_BELOW $80) = triggers when price > $80`
-  - Stop-Loss: `NOT(PRICE_ABOVE $75) = triggers when price < $75`
-- **eval()** is a view function — free to call, verifiable by anyone
-
-## Revenue Model
-
-| Recipient | Share | Description |
-|---|---|---|
-| Keeper | 80% | Paid per execution from job budget |
-| Protocol | 20% | Accumulated in JobRegistry, withdrawable by owner |
+---
 
 ## Quick Start
 
 ### Smart Contracts
-
 ```bash
-# Install Foundry
 curl -L https://foundry.paradigm.xyz | bash && foundryup
-
-# Build & test
 forge build
 forge test  # 35/35 passing
 ```
 
 ### Frontend
-
 ```bash
-cd frontend
-npm install
-npm run dev -- --port 7001
-# Open http://localhost:7001
+cd frontend && npm install && npm run dev -- --port 7001
 ```
 
-### Keeper Bot (CLI)
-
+### Keeper Bot
 ```bash
-cd keeper
-npm install
-cp .env.example .env
-# Edit .env with your private key and registry address
+cd keeper && npm install
+cp .env.example .env  # Edit with your private key
 node keeper.js
 ```
 
 ### Price Relayer
-
 ```bash
 cd keeper
 PRICE_RELAY_ADDRESS=0xe60A1b35Adacc16B00eF16d5542cE86E21F22d55 \
-RPC_URL=https://rpc.xlayer.tech \
-node relayer.js
+RPC_URL=https://rpc.xlayer.tech node relayer.js
 ```
+
+---
 
 ## Tech Stack
 
@@ -141,10 +182,6 @@ node relayer.js
 - **Keeper:** Node.js, ethers.js v6
 - **Chain:** X Layer Mainnet (Chain ID 196)
 - **Oracle:** OKX API → PriceRelay contract
-
-## License
-
-MIT
 
 ---
 
