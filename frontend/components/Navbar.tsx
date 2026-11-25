@@ -17,9 +17,8 @@ export function Navbar() {
     <nav className="border-b border-gray-800 bg-gray-950/80 backdrop-blur sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 font-mono font-bold text-green-400 text-lg">
-          <span className="text-2xl">⚡</span>
-          Circuit Keeper
+        <Link href="/" className="flex items-center gap-2">
+          <img src="/logo.svg" alt="Circuit Keeper" className="h-10" />
         </Link>
 
         {/* Nav links */}
