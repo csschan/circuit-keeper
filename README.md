@@ -7,6 +7,13 @@
 
 ---
 
+> *"Open-source chip design is bringing the verifiability of circuit logic to everyone."*  
+> — Vitalik Buterin, [A Shallow Dive into Open-Source Chip Design](https://vitalik.eth.limo/general/2026/11/26/a_shallow_dive_into_open-source_chip_design.html) (Nov 26, 2026)
+>
+> **TapeOut brings this idea on-chain. Circuit Keeper is the first protocol to use TapeOut circuits as automation trigger conditions — achieving truly tamper-proof DeFi automation. Rules carved in circuits, not code.**
+
+---
+
 ## What Problem Does Circuit Keeper Solve?
 
 **DeFi users lose money because on-chain operations can't auto-execute.**
